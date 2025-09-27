@@ -347,7 +347,7 @@ const changePassword = () => {
 }
 
 const openDocument = (doc: any) => {
-  router.push(`/editor/${doc.id}`)
+  router.push(`/document/${doc.id}`)
 }
 
 const removeFavorite = (doc: any) => {

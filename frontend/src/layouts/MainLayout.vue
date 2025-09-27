@@ -36,16 +36,8 @@
       </div>
 
       <div class="navbar-right">
-        <!-- 通知 -->
-        <el-badge
-          :value="unreadCount"
-          :hidden="unreadCount === 0"
-          class="notification-badge"
-        >
-          <el-button text class="nav-button" @click="showNotifications = true">
-            <el-icon size="20"><Bell /></el-icon>
-          </el-button>
-        </el-badge>
+        <!-- 通知中心 -->
+        <NotificationCenter ref="notificationCenter" />
 
         <!-- 用户菜单 -->
         <el-dropdown @command="handleUserCommand" class="user-dropdown">
@@ -180,6 +172,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import NotificationCenter from '@/components/NotificationCenter.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
 const router = useRouter()

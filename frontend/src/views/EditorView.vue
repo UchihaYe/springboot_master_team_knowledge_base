@@ -51,6 +51,23 @@
           </el-button>
         </el-button-group>
 
+        <!-- 文档统计信息 -->
+        <div class="document-stats" v-if="document.id && document.id !== 'new'">
+          <span class="stat-item">
+            <el-icon><View /></el-icon>
+            {{ document.views || 0 }} 浏览
+          </span>
+          <LikeButton
+            :liked="document.liked || false"
+            :count="document.likes || 0"
+            size="small"
+            type="document"
+            :target-id="document.id"
+            @like="handleLike"
+            @unlike="handleUnlike"
+          />
+        </div>
+
         <el-button @click="saveDocument" type="primary" class="save-btn" :loading="saving">
           <el-icon v-if="!saving"><Check /></el-icon>
           {{ saving ? '保存中' : '保存' }}
@@ -245,6 +262,7 @@
 import { ref, computed, onMounted, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import LikeButton from '@/components/LikeButton.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -266,7 +284,10 @@ const document = ref({
   description: '',
   tags: [] as string[],
   author: '当前用户',
-  updatedAt: new Date().toLocaleString()
+  updatedAt: new Date().toLocaleString(),
+  views: 0,
+  likes: 0,
+  liked: false
 })
 
 // 版本历史
@@ -409,6 +430,18 @@ const saveSettings = () => {
   ElMessage.success('设置已保存')
 }
 
+// 点赞处理函数
+const handleLike = () => {
+  document.value.liked = true
+  document.value.likes += 1
+  ElMessage.success('点赞成功')
+}
+
+const handleUnlike = () => {
+  document.value.liked = false
+  document.value.likes = Math.max(0, document.value.likes - 1)
+}
+
 const viewVersion = (version: any) => {
   ElMessage.info(`查看版本 ${version.version}`)
 }
@@ -473,7 +506,10 @@ onMounted(() => {
       description: '这是一个Vue3组件开发规范文档',
       tags: ['Vue3', '开发规范', '组件'],
       author: '张三',
-      updatedAt: '2024-01-15 10:30'
+      updatedAt: '2024-01-15 10:30',
+      views: 156,
+      likes: 12,
+      liked: false
     }
   }
 })
@@ -520,6 +556,25 @@ onMounted(() => {
   gap: var(--spacing-3);
   flex: 1;
   justify-content: flex-end;
+}
+
+/* 文档统计信息 */
+.document-stats {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-4);
+  padding: var(--spacing-2) var(--spacing-3);
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-light);
+}
+
+.stat-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-1);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
 }
 
 .toolbar-btn {

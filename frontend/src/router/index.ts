@@ -37,6 +37,11 @@ const router = createRouter({
           component: EditorView
         },
         {
+          path: 'document/:id',
+          name: 'document',
+          component: () => import('@/views/DocumentView.vue')
+        },
+        {
           path: 'search',
           name: 'search',
           component: () => import('@/views/SearchView.vue')

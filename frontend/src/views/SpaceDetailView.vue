@@ -92,6 +92,13 @@
         </el-select>
       </div>
       <div class="filter-right">
+        <el-button
+          :type="batchMode ? 'primary' : ''"
+          @click="toggleBatchMode"
+        >
+          <el-icon><Operation /></el-icon>
+          {{ batchMode ? '退出批量' : '批量操作' }}
+        </el-button>
         <el-button-group class="view-toggle">
           <el-button
             :type="viewMode === 'list' ? 'primary' : ''"
@@ -109,6 +116,48 @@
       </div>
     </div>
 
+    <!-- 批量操作工具栏 -->
+    <div v-if="batchMode" class="batch-toolbar">
+      <div class="batch-selection">
+        <el-checkbox
+          :indeterminate="isIndeterminate"
+          :model-value="isAllSelected"
+          @change="toggleSelectAll"
+        >
+          全选
+        </el-checkbox>
+        <span class="selection-count">
+          已选择 {{ selectedDocuments.size }} 个文档
+        </span>
+      </div>
+      <div class="batch-actions">
+        <el-button
+          type="primary"
+          :disabled="selectedDocuments.size === 0"
+          @click="batchPublish"
+        >
+          <el-icon><Upload /></el-icon>
+          批量发布
+        </el-button>
+        <el-button
+          type="warning"
+          :disabled="selectedDocuments.size === 0"
+          @click="batchArchive"
+        >
+          <el-icon><FolderOpened /></el-icon>
+          批量归档
+        </el-button>
+        <el-button
+          type="danger"
+          :disabled="selectedDocuments.size === 0"
+          @click="batchDelete"
+        >
+          <el-icon><Delete /></el-icon>
+          批量删除
+        </el-button>
+      </div>
+    </div>
+
     <!-- 文档列表 -->
     <div class="documents-container">
       <div v-if="viewMode === 'list'" class="documents-list">
@@ -116,8 +165,15 @@
           v-for="doc in filteredDocuments"
           :key="doc.id"
           class="document-item"
-          @click="openDocument(doc)"
+          :class="{ 'selected': selectedDocuments.has(doc.id) }"
+          @click="batchMode ? toggleDocumentSelection(doc.id) : openDocument(doc)"
         >
+          <div v-if="batchMode" class="doc-checkbox" @click.stop>
+            <el-checkbox
+              :model-value="selectedDocuments.has(doc.id)"
+              @change="toggleDocumentSelection(doc.id)"
+            />
+          </div>
           <div class="doc-icon">
             <el-icon size="24" color="var(--primary-500)">
               <Document />
@@ -127,15 +183,20 @@
             <div class="doc-header">
               <h3 class="doc-title">{{ doc.title }}</h3>
               <div class="doc-actions" @click.stop>
-                <el-button
-                  :type="doc.isLiked ? 'primary' : ''"
+                <LikeButton
+                  v-if="canLikeDoc(doc)"
+                  :liked="doc.isLiked"
+                  :count="doc.likes"
                   size="small"
-                  @click="toggleLike(doc)"
-                  class="action-btn"
-                >
-                  <el-icon><Star /></el-icon>
+                  type="document"
+                  :target-id="doc.id"
+                  @like="() => handleDocumentLike(doc)"
+                  @unlike="() => handleDocumentUnlike(doc)"
+                />
+                <span v-else class="like-disabled">
+                  <el-icon><SuitHeart /></el-icon>
                   {{ doc.likes }}
-                </el-button>
+                </span>
                 <el-button
                   :type="doc.isBookmarked ? 'warning' : ''"
                   size="small"
@@ -173,6 +234,13 @@
             </div>
             <p class="doc-summary">{{ doc.summary }}</p>
             <div class="doc-tags">
+              <el-tag
+                :type="getDocumentStatusInfo(doc.status).color"
+                size="small"
+                class="doc-status-tag"
+              >
+                {{ getDocumentStatusInfo(doc.status).label }}
+              </el-tag>
               <el-tag
                 v-for="tag in doc.tags"
                 :key="tag"
@@ -348,9 +416,18 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import LikeButton from '@/components/LikeButton.vue'
+import { DocumentStatus, UserRole } from '@/types/document'
+import { canLikeDocument, getDocumentStatusInfo } from '@/utils/permissions'
 
 const router = useRouter()
 const route = useRoute()
+
+// 当前用户
+const currentUser = ref({
+  id: '1',
+  role: UserRole.EDITOR
+})
 
 // 响应式数据
 const searchQuery = ref('')
@@ -361,12 +438,10 @@ const showComments = ref(false)
 const newComment = ref('')
 const currentDocumentId = ref(null)
 
-// 当前用户
-const currentUser = ref({
-  id: 1,
-  name: '张三',
-  avatar: 'https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png'
-})
+// 批量操作相关
+const batchMode = ref(false)
+const selectedDocuments = ref(new Set())
+
 
 // 空间数据
 const spaceData = ref({
@@ -398,6 +473,7 @@ const documents = ref([
     comments: 5,
     isLiked: false,
     isBookmarked: true,
+    status: DocumentStatus.PUBLISHED,
     createdAt: '2024-01-15',
     updatedAt: '2 小时前'
   },
@@ -417,6 +493,7 @@ const documents = ref([
     comments: 3,
     isLiked: true,
     isBookmarked: false,
+    status: DocumentStatus.PUBLISHED,
     createdAt: '2024-01-14',
     updatedAt: '1 天前'
   },
@@ -436,6 +513,7 @@ const documents = ref([
     comments: 8,
     isLiked: false,
     isBookmarked: false,
+    status: DocumentStatus.DRAFT,
     createdAt: '2024-01-13',
     updatedAt: '3 天前'
   }
@@ -512,13 +590,29 @@ const filteredDocuments = computed(() => {
   return filtered
 })
 
+// 检查文档是否可以点赞
+const canLikeDoc = computed(() => {
+  return (doc: any) => canLikeDocument(currentUser.value.role, doc.status)
+})
+
+// 批量选择相关的计算属性
+const isAllSelected = computed(() => {
+  return filteredDocuments.value.length > 0 &&
+         selectedDocuments.value.size === filteredDocuments.value.length
+})
+
+const isIndeterminate = computed(() => {
+  return selectedDocuments.value.size > 0 &&
+         selectedDocuments.value.size < filteredDocuments.value.length
+})
+
 // 方法
 const createDocument = () => {
   router.push('/editor/new')
 }
 
 const openDocument = (doc) => {
-  router.push(`/editor/${doc.id}`)
+  router.push(`/document/${doc.id}`)
 }
 
 const toggleLike = (doc) => {
@@ -530,6 +624,109 @@ const toggleLike = (doc) => {
 const toggleBookmark = (doc) => {
   doc.isBookmarked = !doc.isBookmarked
   ElMessage.success(doc.isBookmarked ? '已收藏' : '已取消收藏')
+}
+
+// LikeButton组件的点赞处理函数
+const handleDocumentLike = (doc) => {
+  doc.isLiked = true
+  doc.likes = (doc.likes || 0) + 1
+}
+
+const handleDocumentUnlike = (doc) => {
+  doc.isLiked = false
+  doc.likes = Math.max(0, (doc.likes || 0) - 1)
+}
+
+// 批量操作相关方法
+const toggleBatchMode = () => {
+  batchMode.value = !batchMode.value
+  if (!batchMode.value) {
+    selectedDocuments.value.clear()
+  }
+}
+
+const toggleDocumentSelection = (docId) => {
+  if (selectedDocuments.value.has(docId)) {
+    selectedDocuments.value.delete(docId)
+  } else {
+    selectedDocuments.value.add(docId)
+  }
+}
+
+const toggleSelectAll = () => {
+  if (isAllSelected.value) {
+    selectedDocuments.value.clear()
+  } else {
+    filteredDocuments.value.forEach(doc => {
+      selectedDocuments.value.add(doc.id)
+    })
+  }
+}
+
+const batchPublish = () => {
+  ElMessageBox.confirm(
+    `确定要批量发布 ${selectedDocuments.value.size} 个文档吗？`,
+    '批量发布',
+    {
+      confirmButtonText: '发布',
+      cancelButtonText: '取消',
+      type: 'warning'
+    }
+  ).then(() => {
+    selectedDocuments.value.forEach(docId => {
+      const doc = documents.value.find(d => d.id === docId)
+      if (doc && doc.status === DocumentStatus.DRAFT) {
+        doc.status = DocumentStatus.PUBLISHED
+        doc.publishedAt = new Date().toISOString()
+      }
+    })
+    ElMessage.success(`成功发布 ${selectedDocuments.value.size} 个文档`)
+    selectedDocuments.value.clear()
+  }).catch(() => {
+    ElMessage.info('已取消批量发布')
+  })
+}
+
+const batchArchive = () => {
+  ElMessageBox.confirm(
+    `确定要批量归档 ${selectedDocuments.value.size} 个文档吗？`,
+    '批量归档',
+    {
+      confirmButtonText: '归档',
+      cancelButtonText: '取消',
+      type: 'warning'
+    }
+  ).then(() => {
+    selectedDocuments.value.forEach(docId => {
+      const doc = documents.value.find(d => d.id === docId)
+      if (doc && doc.status === DocumentStatus.PUBLISHED) {
+        doc.status = DocumentStatus.ARCHIVED
+      }
+    })
+    ElMessage.success(`成功归档 ${selectedDocuments.value.size} 个文档`)
+    selectedDocuments.value.clear()
+  }).catch(() => {
+    ElMessage.info('已取消批量归档')
+  })
+}
+
+const batchDelete = () => {
+  ElMessageBox.confirm(
+    `确定要批量删除 ${selectedDocuments.value.size} 个文档吗？此操作不可撤销。`,
+    '批量删除',
+    {
+      confirmButtonText: '删除',
+      cancelButtonText: '取消',
+      type: 'error'
+    }
+  ).then(() => {
+    const deleteIds = Array.from(selectedDocuments.value)
+    documents.value = documents.value.filter(doc => !deleteIds.includes(doc.id))
+    ElMessage.success(`成功删除 ${deleteIds.length} 个文档`)
+    selectedDocuments.value.clear()
+  }).catch(() => {
+    ElMessage.info('已取消批量删除')
+  })
 }
 
 const handleDocAction = (command) => {
@@ -971,6 +1168,47 @@ onMounted(() => {
 .empty-state {
   text-align: center;
   padding: var(--spacing-16);
+}
+
+/* 批量操作工具栏 */
+.batch-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-4) var(--spacing-6);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  margin-bottom: var(--spacing-4);
+}
+
+.batch-selection {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-4);
+}
+
+.selection-count {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.batch-actions {
+  display: flex;
+  gap: var(--spacing-2);
+}
+
+/* 文档复选框 */
+.doc-checkbox {
+  display: flex;
+  align-items: center;
+  margin-right: var(--spacing-3);
+}
+
+/* 选中状态的文档项 */
+.document-item.selected {
+  background-color: var(--primary-50);
+  border-color: var(--primary-200);
 }
 
 /* 响应式 */
