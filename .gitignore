@@ -1,0 +1,49 @@
+# Java
+*.class
+*.jar
+*.war
+*.ear
+*.nar
+*.iml
+*.ipr
+*.iws
+*.log
+*.log.*
+
+# Maven
+target/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/coverage/
+
+# Database
+*.db
+*.sqlite
+
+# System
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+
+# Environment files
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+
+# Others
+*.bak
+*.tmp
+*.temp
