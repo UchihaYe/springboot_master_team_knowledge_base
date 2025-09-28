@@ -1,0 +1,138 @@
+server:
+  port: 8080
+  servlet:
+    context-path: /api/v1
+
+spring:
+  application:
+    name: knowledge-management
+
+
+  # Database configuration
+  datasource:
+    url: jdbc:mysql://localhost:3306/knowledge_management?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+    username: ${MYSQL_USER:root}
+    password: ${MYSQL_PASSWORD:266700}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      pool-name: HikariCP
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+
+  # Redis configuration
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:266700}
+      database: 0
+      timeout: 6000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-wait: -1ms
+          max-idle: 8
+          min-idle: 0
+
+  # File upload configuration
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 50MB
+
+  # Mail configuration
+  mail:
+    host: ${MAIL_HOST:smtp.example.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
+  # Jackson configuration
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: GMT+8
+    serialization:
+      write-dates-as-timestamps: false
+    default-property-inclusion: non_null
+
+# MyBatis Plus configuration
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    db-config:
+      id-type: auto
+      logic-delete-field: deletedAt
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+  mapper-locations: classpath*:mapper/*.xml
+
+# Application configuration
+app:
+  # JWT configuration
+  jwt:
+    secret: ${JWT_SECRET:MySecretKeyForKnowledgeManagementSystem2024}
+    expiration: 86400 # 24 hours
+    refresh-expiration: 604800 # 7 days
+
+  # File storage configuration
+  file:
+    upload-path: ${FILE_UPLOAD_PATH:./uploads}
+    allowed-types: image/jpeg,image/png,image/gif,application/pdf,text/plain
+    max-size: 10485760 # 10MB
+
+  # Security configuration
+  security:
+    password-encoder: bcrypt
+    max-login-attempts: 5
+    lock-duration: 300 # 5 minutes
+
+  # Cache configuration
+  cache:
+    default-ttl: 3600 # 1 hour
+    user-ttl: 1800 # 30 minutes
+    document-ttl: 600 # 10 minutes
+
+# Logging configuration
+logging:
+  level:
+    com.knowledge: debug
+    org.springframework.security: debug
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: logs/knowledge-management.log
+
+# SpringDoc configuration
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: alpha
+    tags-sorter: alpha
+  info:
+    title: Knowledge Management API
+    description: Team Online Knowledge Base System API Documentation
+    version: 1.0.0
+
+# Management endpoints configuration
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: when-authorized
