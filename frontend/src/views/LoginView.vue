@@ -154,6 +154,8 @@ import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
+import { authApi } from '@/api/auth'
+import type { LoginRequest } from '@/types/auth'
 
 const router = useRouter()
 const loginFormRef = ref<FormInstance>()
@@ -172,25 +174,46 @@ const rules: FormRules = {
   ],
   password: [
     { required: true, message: '请输入密码', trigger: 'blur' },
-    { min: 8, message: '密码至少8位', trigger: 'blur' }
+    { min: 6, message: '密码至少6位', trigger: 'blur' }
   ]
 }
 
 const handleLogin = async () => {
   if (!loginFormRef.value) return
 
-  await loginFormRef.value.validate((valid) => {
-    if (valid) {
-      loading.value = true
-
-      // 模拟登录请求
-      setTimeout(() => {
-        loading.value = false
-        ElMessage.success('登录成功')
-        router.push('/dashboard')
-      }, 1000)
-    }
+  const isValid = await new Promise<boolean>((resolve) => {
+    loginFormRef.value!.validate((valid) => {
+      resolve(valid)
+    })
   })
+
+  if (!isValid) return
+
+  loading.value = true
+
+  try {
+    const loginRequest: LoginRequest = {
+      email: loginForm.email,
+      password: loginForm.password
+    }
+
+    const response = await authApi.login(loginRequest)
+
+    ElMessage.success('登录成功！欢迎回来！')
+
+    // 跳转到仪表盘
+    await router.push('/dashboard')
+
+  } catch (error: any) {
+    console.error('登录失败:', error)
+
+    // 显示错误信息
+    const errorMessage = error.response?.data?.message || error.message || '登录失败，请检查邮箱和密码'
+    ElMessage.error(errorMessage)
+
+  } finally {
+    loading.value = false
+  }
 }
 
 const handleSocialLogin = (platform: string) => {

@@ -175,9 +175,11 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import NotificationCenter from '@/components/NotificationCenter.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
 const route = useRoute()
+const authStore = useAuthStore()
 
 const searchQuery = ref('')
 const showNotifications = ref(false)
@@ -197,10 +199,12 @@ const unreadCount = computed(() =>
 )
 
 // 用户信息
-const userInfo = ref({
-  name: '张三',
-  avatar: 'https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png',
-  isAdmin: true
+const userInfo = computed(() => {
+  return {
+    name: authStore.user?.displayName || '用户',
+    avatar: authStore.user?.avatarUrl || 'https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png',
+    isAdmin: authStore.isAdmin
+  }
 })
 
 // 用户的知识空间
@@ -305,10 +309,14 @@ const handleLogout = async () => {
       type: 'warning'
     })
 
+    await authStore.logout()
     ElMessage.success('已退出登录')
     router.push('/login')
-  } catch {
-    // 用户取消退出
+  } catch (error: any) {
+    if (error !== 'cancel') {
+      console.error('登出失败:', error)
+      ElMessage.error('登出失败')
+    }
   }
 }
 
