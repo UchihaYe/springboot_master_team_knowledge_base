@@ -92,6 +92,7 @@ export interface PermissionCheckResult {
   canLock: boolean
 }
 
+
 // 文档版本历史
 export interface DocumentVersion {
   id: string

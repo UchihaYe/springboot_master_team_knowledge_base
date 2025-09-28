@@ -232,15 +232,14 @@
                     <el-icon><View /></el-icon>
                     {{ doc.views || 0 }}
                   </span>
-                  <LikeButton
-                    :liked="doc.liked || false"
-                    :count="doc.likes || 0"
-                    size="small"
-                    type="document"
-                    :target-id="doc.id"
-                    @like="() => handleDocLike(doc)"
-                    @unlike="() => handleDocUnlike(doc)"
-                  />
+                  <span class="like-count">
+                    <el-icon>❤️</el-icon>
+                    {{ doc.likes || 0 }}
+                  </span>
+                  <span class="comment-count">
+                    <el-icon><ChatLineRound /></el-icon>
+                    {{ doc.comments || 0 }}
+                  </span>
                 </div>
               </div>
             </div>
@@ -636,16 +635,6 @@ const searchKeyword = (keyword: string) => {
   router.push(`/search?q=${encodeURIComponent(keyword)}`)
 }
 
-// 文档点赞处理函数
-const handleDocLike = (doc: any) => {
-  doc.liked = true
-  doc.likes = (doc.likes || 0) + 1
-}
-
-const handleDocUnlike = (doc: any) => {
-  doc.liked = false
-  doc.likes = Math.max(0, (doc.likes || 0) - 1)
-}
 
 onMounted(() => {
   // 初始化数据
@@ -1097,12 +1086,22 @@ onMounted(() => {
   gap: var(--spacing-2);
 }
 
-.view-count {
+.view-count,
+.like-count,
+.comment-count {
   font-size: var(--text-xs);
   color: var(--text-tertiary);
   display: flex;
   align-items: center;
   gap: var(--spacing-1);
+}
+
+.like-count {
+  color: var(--error-500);
+}
+
+.comment-count {
+  color: var(--info-500);
 }
 
 /* 活动列表 */

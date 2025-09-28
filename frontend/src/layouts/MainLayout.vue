@@ -56,10 +56,6 @@
                 <el-icon><FolderOpened /></el-icon>
                 我的空间
               </el-dropdown-item>
-              <el-dropdown-item divided command="admin" v-if="userInfo.isAdmin">
-                <el-icon><Setting /></el-icon>
-                系统管理
-              </el-dropdown-item>
               <el-dropdown-item divided command="logout">
                 <el-icon><SwitchButton /></el-icon>
                 退出登录
@@ -93,6 +89,11 @@
             <el-menu-item index="/profile" @click="$router.push('/profile')">
               <el-icon><User /></el-icon>
               <span v-show="!sidebarCollapsed">个人中心</span>
+            </el-menu-item>
+
+            <el-menu-item index="/admin" @click="$router.push('/admin')" v-if="userInfo.isAdmin">
+              <el-icon><Setting /></el-icon>
+              <span v-show="!sidebarCollapsed">系统管理</span>
             </el-menu-item>
           </el-menu>
 
@@ -264,7 +265,7 @@ const handleMenuSelect = (index: string) => {
 
 // 打开知识空间
 const openSpace = (space: any) => {
-  router.push(`/spaces/${space.id}`)
+  router.push(`/space/${space.id}`)
 }
 
 // 搜索功能

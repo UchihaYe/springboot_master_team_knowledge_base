@@ -1,4 +1,4 @@
-import { UserRole, DocumentStatus, DocumentPermission, PermissionCheckResult } from '@/types/document'
+import { UserRole, DocumentStatus, DocumentPermission, type PermissionCheckResult } from '@/types/document'
 
 // 获取用户在文档上的权限
 export function checkDocumentPermissions(

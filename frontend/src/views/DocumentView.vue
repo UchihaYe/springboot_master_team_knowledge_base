@@ -1,87 +1,159 @@
 <template>
   <div class="document-view">
-    <!-- 返回按钮 -->
-    <div class="header-section">
-      <el-button @click="$router.back()" text class="back-btn">
-        <el-icon><ArrowLeft /></el-icon>
-        返回
-      </el-button>
-    </div>
-
-    <!-- 文档标题和基本信息 -->
-    <div class="document-header">
-      <h1 class="document-title">{{ document.title }}</h1>
-      <div class="document-meta">
-        <el-tag :type="statusInfo.color" size="small">
-          {{ statusInfo.label }}
-        </el-tag>
-        <span class="author">作者: {{ document.author.name }}</span>
-        <span class="date">更新时间: {{ document.updatedAt }}</span>
+    <!-- 左侧大纲导航 -->
+    <div class="left-sidebar" v-if="tocItems.length > 0">
+      <div class="toc-section">
+        <h3 class="toc-title">文章大纲</h3>
+        <div class="toc-list">
+          <div
+            v-for="item in tocItems"
+            :key="item.id"
+            class="toc-item"
+            :class="`toc-level-${item.level}`"
+            @click="scrollToHeading(item.id)"
+          >
+            <span class="toc-text">{{ item.text }}</span>
+          </div>
+        </div>
       </div>
     </div>
 
-    <!-- 文档统计 -->
-    <div class="document-stats">
-      <span class="stat-item">
-        <el-icon><View /></el-icon>
-        {{ document.views }} 浏览
-      </span>
-      <span class="stat-item">
-        <el-icon><SuitHeart /></el-icon>
-        {{ document.likes }} 点赞
-      </span>
-      <span class="stat-item">
-        <el-icon><ChatLineRound /></el-icon>
-        {{ document.comments }} 评论
-      </span>
-    </div>
+    <!-- 主要内容区域 -->
+    <div class="main-layout">
+      <!-- 顶部导航 -->
+      <div class="top-header">
+        <div class="header-left">
+          <el-button @click="$router.back()" text class="back-btn">
+            <el-icon><ArrowLeft /></el-icon>
+            返回
+          </el-button>
+        </div>
+        <div class="header-right">
+          <span class="page-title">文章详情页</span>
+        </div>
+      </div>
 
-    <!-- 操作按钮 -->
-    <div class="action-buttons">
-      <el-button @click="toggleFavorite">
-        <el-icon><Star /></el-icon>
-        {{ document.favorited ? '已收藏' : '收藏' }}
-      </el-button>
-      <el-button v-if="permissions.canEdit" @click="editDocument">
-        <el-icon><Edit /></el-icon>
-        编辑
-      </el-button>
-    </div>
+      <!-- 内容容器 -->
+      <div class="content-container">
+        <!-- 文章头部信息 -->
+        <div class="article-header">
+          <h1 class="article-title">{{ document.title }}</h1>
 
-    <!-- 文档标签 -->
-    <div class="document-tags" v-if="document.tags && document.tags.length > 0">
-      <el-tag
-        v-for="tag in document.tags"
-        :key="tag"
-        class="tag-item"
-        @click="searchByTag(tag)"
-      >
-        {{ tag }}
-      </el-tag>
-    </div>
+          <!-- 作者信息和统计数据 -->
+          <div class="author-stats-section">
+            <!-- 作者信息 -->
+            <div class="author-info">
+              <el-avatar
+                :size="40"
+                :src="document.author.avatar"
+                class="author-avatar"
+              >
+                {{ document.author.name.charAt(0) }}
+              </el-avatar>
+              <div class="author-details">
+                <div class="author-name">{{ document.author.name }}</div>
+              </div>
+            </div>
 
-    <!-- 文档内容 -->
-    <div class="document-content">
-      <el-card>
-        <div v-html="renderedContent" class="markdown-content"></div>
-      </el-card>
-    </div>
-
-    <!-- 评论区 -->
-    <div class="comments-section" v-if="canComment">
-      <h3>评论 ({{ comments.length }})</h3>
-      <div class="comment-list">
-        <div v-for="comment in comments" :key="comment.id" class="comment-item">
-          <div class="comment-header">
-            <strong>{{ comment.author }}</strong>
-            <span class="comment-time">{{ comment.createdAt }}</span>
+            <!-- 统计数据 -->
+            <div class="stats-list">
+              <div class="stat-item">
+                <el-icon class="stat-icon"><View /></el-icon>
+                <span class="stat-label">点赞量</span>
+                <span class="stat-value">{{ document.likes }}</span>
+              </div>
+              <div class="stat-item">
+                <el-icon class="stat-icon"><View /></el-icon>
+                <span class="stat-label">浏览量</span>
+                <span class="stat-value">{{ document.views }}</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-label">更新时间</span>
+                <span class="stat-value">{{ document.updatedAt }}</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-label">字数</span>
+                <span class="stat-value">{{ Math.floor(document.content.length / 500) }}.{{ Math.floor((document.content.length % 500) / 50) }}k</span>
+              </div>
+            </div>
           </div>
-          <div class="comment-content">{{ comment.content }}</div>
-          <div class="comment-actions">
-            <el-button text size="small">
-              <el-icon><SuitHeart /></el-icon>
-              {{ comment.likes }}
+        </div>
+
+        <!-- 文档标签 -->
+        <div class="document-tags" v-if="document.tags && document.tags.length > 0">
+          <el-tag
+            v-for="tag in document.tags"
+            :key="tag"
+            class="tag-item"
+            type="primary"
+            effect="light"
+            @click="searchByTag(tag)"
+          >
+            {{ tag }}
+          </el-tag>
+        </div>
+
+        <!-- 文档内容 -->
+        <div class="document-content">
+          <div v-html="renderedContent" class="markdown-content"></div>
+        </div>
+
+        <!-- 互动按钮区域 -->
+        <div class="interaction-section">
+          <div class="interaction-buttons">
+            <el-button
+              class="interaction-btn like-btn"
+              :class="{ active: document.liked }"
+              @click="toggleLike"
+              size="large"
+              round
+            >
+              <el-icon>❤️</el-icon>
             </el-button>
+
+            <el-button
+              class="interaction-btn comment-btn"
+              size="large"
+              round
+            >
+              <el-icon><ChatLineRound /></el-icon>
+            </el-button>
+
+            <el-button
+              class="interaction-btn star-btn"
+              :class="{ active: document.favorited }"
+              @click="toggleFavorite"
+              size="large"
+              round
+            >
+              <el-icon><Star /></el-icon>
+            </el-button>
+          </div>
+        </div>
+
+        <!-- 评论区 -->
+        <div class="comments-section" v-if="canComment">
+          <div class="comments-header">
+            <h3 class="comments-title">评论({{ comments.length }})</h3>
+            <el-button type="primary" size="small">发表</el-button>
+          </div>
+
+          <div class="comment-list">
+            <div v-for="comment in comments" :key="comment.id" class="comment-item">
+              <el-avatar
+                :size="40"
+                class="comment-avatar"
+              >
+                {{ comment.author.charAt(0) }}
+              </el-avatar>
+              <div class="comment-content-wrapper">
+                <div class="comment-header">
+                  <strong class="comment-author">{{ comment.author }}</strong>
+                  <span class="comment-time">{{ comment.createdAt }}</span>
+                </div>
+                <div class="comment-content">{{ comment.content }}</div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -96,7 +168,7 @@ import { ElMessage } from 'element-plus'
 import {
   ArrowLeft,
   View,
-  SuitHeart,
+  StarFilled,
   ChatLineRound,
   Star,
   Edit
@@ -164,6 +236,9 @@ const comments = ref([
   }
 ])
 
+// 大纲数据
+const tocItems = ref([])
+
 // 权限检查
 const permissions = computed(() => {
   const isAuthor = document.value.author.id === currentUser.value.id
@@ -190,10 +265,23 @@ const canComment = computed(() => {
 const renderedContent = computed(() => {
   if (!document.value.content) return ''
 
-  return document.value.content
-    .replace(/^### (.*$)/gim, '<h3>$1</h3>')
-    .replace(/^## (.*$)/gim, '<h2>$1</h2>')
-    .replace(/^# (.*$)/gim, '<h1>$1</h1>')
+  const lines = document.value.content.split('\n')
+  let processedContent = ''
+
+  lines.forEach((line, index) => {
+    // 处理标题并添加ID
+    const headingMatch = line.match(/^(#{1,6})\s+(.+)$/)
+    if (headingMatch) {
+      const level = headingMatch[1].length
+      const text = headingMatch[2].trim()
+      const id = `heading-${index}-${text.replace(/[^\w\u4e00-\u9fa5]/g, '-').toLowerCase()}`
+      processedContent += `<h${level} id="${id}">${text}</h${level}>\n`
+    } else {
+      processedContent += line + '\n'
+    }
+  })
+
+  return processedContent
     .replace(/```(\w+)?\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>')
     .replace(/`([^`]+)`/g, '<code>$1</code>')
     .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
@@ -202,9 +290,22 @@ const renderedContent = computed(() => {
     .replace(/(<li>.*<\/li>)/gs, '<ul>$1</ul>')
     .replace(/<\/ul>\s*<ul>/g, '')
     .split('\n\n')
-    .map(p => p.includes('<h') || p.includes('<ul>') || p.includes('<pre>') ? p : `<p>${p}</p>`)
+    .map(p => {
+      if (p.includes('<h') || p.includes('<ul>') || p.includes('<pre>')) {
+        return p
+      }
+      return p.trim() ? `<p>${p}</p>` : ''
+    })
+    .filter(p => p)
     .join('')
 })
+
+// 点赞切换
+const toggleLike = () => {
+  document.value.liked = !document.value.liked
+  document.value.likes += document.value.liked ? 1 : -1
+  ElMessage.success(document.value.liked ? '点赞成功' : '取消点赞')
+}
 
 // 收藏切换
 const toggleFavorite = () => {
@@ -220,6 +321,38 @@ const editDocument = () => {
 // 标签搜索
 const searchByTag = (tag: string) => {
   router.push(`/search?tag=${encodeURIComponent(tag)}`)
+}
+
+// 生成大纲
+const generateTOC = () => {
+  const content = document.value.content
+  const headings = []
+  const lines = content.split('\n')
+
+  lines.forEach((line, index) => {
+    const headingMatch = line.match(/^(#{1,6})\s+(.+)$/)
+    if (headingMatch) {
+      const level = headingMatch[1].length
+      const text = headingMatch[2].trim()
+      const id = `heading-${index}-${text.replace(/[^\w\u4e00-\u9fa5]/g, '-').toLowerCase()}`
+
+      headings.push({
+        id,
+        text,
+        level
+      })
+    }
+  })
+
+  tocItems.value = headings
+}
+
+// 跳转到标题
+const scrollToHeading = (headingId: string) => {
+  const element = document.getElementById(headingId)
+  if (element) {
+    element.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
 }
 
 // 初始化数据
@@ -345,221 +478,579 @@ const emit = defineEmits<{
 
   // 增加浏览量
   document.value.views++
+
+  // 生成大纲
+  generateTOC()
 })
 </script>
 
 <style scoped>
 .document-view {
-  max-width: 1000px;
-  margin: 0 auto;
-  padding: 20px;
-}
-
-.header-section {
-  margin-bottom: 20px;
-}
-
-.back-btn {
-  color: #606266;
-}
-
-.back-btn:hover {
-  color: #409eff;
-}
-
-.document-header {
-  margin-bottom: 20px;
-  padding-bottom: 20px;
-  border-bottom: 1px solid #ebeef5;
-}
-
-.document-title {
-  font-size: 28px;
-  font-weight: bold;
-  color: #303133;
-  margin: 0 0 15px 0;
-}
-
-.document-meta {
   display: flex;
-  align-items: center;
-  gap: 15px;
-  color: #909399;
+  min-height: 100vh;
+  background: #f8fafc;
+}
+
+/* 左侧大纲导航 */
+.left-sidebar {
+  width: 280px;
+  background: white;
+  border-right: 1px solid #e2e8f0;
+  padding: 24px 20px;
+  flex-shrink: 0;
+  height: 100vh;
+  overflow-y: auto;
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.05);
+}
+
+.toc-section {
+  position: sticky;
+  top: 0;
+}
+
+.toc-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1e293b;
+  margin: 0 0 16px 0;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #3b82f6;
+}
+
+.toc-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.toc-item {
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-left: 3px solid transparent;
+}
+
+.toc-item:hover {
+  background: #f1f5f9;
+  border-left-color: #3b82f6;
+}
+
+.toc-level-1 {
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.toc-level-2 {
+  margin-left: 16px;
+  font-weight: 500;
+  color: #475569;
+}
+
+.toc-level-3 {
+  margin-left: 32px;
+  color: #64748b;
+}
+
+.toc-level-4 {
+  margin-left: 48px;
+  color: #64748b;
   font-size: 14px;
 }
 
-.document-stats {
+.toc-level-5,
+.toc-level-6 {
+  margin-left: 64px;
+  color: #94a3b8;
+  font-size: 14px;
+}
+
+.toc-text {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 主要布局 */
+.main-layout {
+  flex: 1;
   display: flex;
-  gap: 20px;
-  margin-bottom: 20px;
-  padding: 15px;
-  background: #f5f7fa;
-  border-radius: 8px;
+  flex-direction: column;
+  background: #f8fafc;
+}
+
+/* 顶部导航 */
+.top-header {
+  background: white;
+  border-bottom: 1px solid #e2e8f0;
+  padding: 16px 32px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+}
+
+.back-btn {
+  color: #64748b;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+  background: transparent;
+  padding: 8px 12px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.back-btn:hover {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+}
+
+.page-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+/* 内容容器 */
+.content-container {
+  flex: 1;
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 32px;
+  width: 100%;
+}
+
+/* 文章头部 */
+.article-header {
+  background: white;
+  border-radius: 12px;
+  padding: 32px;
+  margin-bottom: 24px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+  border: 1px solid #e2e8f0;
+}
+
+.article-title {
+  font-size: 36px;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0 0 32px 0;
+  line-height: 1.2;
+}
+
+/* 作者信息和统计数据区域 */
+.author-stats-section {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 32px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.author-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.author-avatar {
+  flex-shrink: 0;
+  border: 2px solid #3b82f6;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.2);
+}
+
+.author-details {
+  display: flex;
+  flex-direction: column;
+}
+
+.author-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: #2563eb;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.author-name:hover {
+  color: #1d4ed8;
+}
+
+/* 统计数据列表 */
+.stats-list {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  flex-wrap: wrap;
 }
 
 .stat-item {
   display: flex;
   align-items: center;
-  gap: 5px;
-  color: #606266;
+  gap: 6px;
+  color: #64748b;
   font-size: 14px;
 }
 
-.action-buttons {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 20px;
+.stat-icon {
+  color: #3b82f6;
+  font-size: 16px;
 }
 
+.stat-label {
+  color: #64748b;
+  white-space: nowrap;
+}
+
+.stat-value {
+  color: #1e293b;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* 文档标签 */
 .document-tags {
+  margin-bottom: 24px;
   display: flex;
-  gap: 8px;
-  margin-bottom: 20px;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
 .tag-item {
   cursor: pointer;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s ease;
 }
 
 .tag-item:hover {
-  opacity: 0.8;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(37, 99, 235, 0.3);
 }
 
+/* 文档内容 */
 .document-content {
-  margin-bottom: 30px;
+  background: white;
+  border-radius: 12px;
+  padding: 40px;
+  margin-bottom: 32px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+  border: 1px solid #e2e8f0;
 }
 
 .markdown-content {
-  line-height: 1.6;
+  line-height: 1.8;
+  color: #374151;
+  font-size: 16px;
 }
 
 .markdown-content h1,
 .markdown-content h2,
 .markdown-content h3 {
-  color: #303133;
-  margin-top: 20px;
-  margin-bottom: 10px;
+  color: #1e293b;
+  margin-top: 36px;
+  margin-bottom: 20px;
+  font-weight: 700;
 }
 
 .markdown-content h1 {
-  font-size: 24px;
-  border-bottom: 2px solid #ebeef5;
-  padding-bottom: 10px;
+  font-size: 32px;
+  border-bottom: 3px solid #3b82f6;
+  padding-bottom: 16px;
 }
 
 .markdown-content h2 {
-  font-size: 20px;
+  font-size: 28px;
+  color: #2563eb;
 }
 
 .markdown-content h3 {
-  font-size: 18px;
+  font-size: 24px;
+  color: #3730a3;
 }
 
 .markdown-content p {
-  margin-bottom: 15px;
-  color: #606266;
+  margin-bottom: 20px;
+  color: #4b5563;
 }
 
 .markdown-content ul {
-  margin-bottom: 15px;
-  padding-left: 20px;
+  margin-bottom: 20px;
+  padding-left: 28px;
 }
 
 .markdown-content li {
-  margin-bottom: 5px;
-  color: #606266;
+  margin-bottom: 10px;
+  color: #4b5563;
 }
 
 .markdown-content code {
-  background: #f5f7fa;
-  color: #e6a23c;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-family: 'Courier New', monospace;
+  background: #f3f4f6;
+  color: #c026d3;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-family: 'JetBrains Mono', 'Consolas', 'Monaco', monospace;
+  font-size: 14px;
+  font-weight: 500;
 }
 
 .markdown-content pre {
-  background: #f5f7fa;
-  border: 1px solid #ebeef5;
-  border-radius: 8px;
-  padding: 15px;
-  margin: 15px 0;
+  background: #1e293b;
+  color: #e2e8f0;
+  border-radius: 12px;
+  padding: 24px;
+  margin: 24px 0;
   overflow-x: auto;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
 .markdown-content pre code {
   background: none;
-  color: #303133;
+  color: inherit;
   padding: 0;
+  font-size: 14px;
 }
 
-.comments-section {
-  margin-top: 30px;
+/* 互动按钮区域 */
+.interaction-section {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 32px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+  border: 1px solid #e2e8f0;
 }
 
-.comments-section h3 {
-  color: #303133;
-  margin-bottom: 20px;
+.interaction-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+}
+
+.interaction-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 60px;
+  height: 44px;
+  border: 2px solid #e2e8f0;
+  background: white;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-weight: 500;
+}
+
+.interaction-btn:hover {
+  border-color: #3b82f6;
+  color: #3b82f6;
+  background: #eff6ff;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px rgba(59, 130, 246, 0.2);
+}
+
+.like-btn {
+  border-color: #ef4444;
+  color: #ef4444;
+}
+
+.like-btn:hover {
+  border-color: #dc2626;
+  color: #dc2626;
+  background: #fef2f2;
+}
+
+.like-btn.active {
+  border-color: #dc2626;
+  color: #dc2626;
+  background: #fee2e2;
+}
+
+.star-btn.active {
+  border-color: #f59e0b;
+  color: #f59e0b;
+  background: #fffbeb;
+}
+
+.interaction-btn .el-icon {
   font-size: 18px;
+}
+
+/* 评论区域 */
+.comments-section {
+  background: white;
+  border-radius: 12px;
+  padding: 32px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+  border: 1px solid #e2e8f0;
+}
+
+.comments-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 28px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.comments-title {
+  color: #1e293b;
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
 }
 
 .comment-list {
   display: flex;
   flex-direction: column;
-  gap: 15px;
+  gap: 24px;
 }
 
 .comment-item {
-  background: #f5f7fa;
-  border-radius: 8px;
-  padding: 15px;
+  display: flex;
+  gap: 16px;
+  padding: 20px;
+  background: #f8fafc;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  transition: all 0.2s ease;
+}
+
+.comment-item:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+.comment-avatar {
+  flex-shrink: 0;
+  margin-top: 2px;
+  border: 2px solid white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.comment-content-wrapper {
+  flex: 1;
 }
 
 .comment-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  margin-bottom: 10px;
+  gap: 12px;
+  margin-bottom: 12px;
 }
 
-.comment-header strong {
-  color: #303133;
+.comment-author {
+  color: #2563eb;
+  font-size: 15px;
+  font-weight: 600;
 }
 
 .comment-time {
-  color: #909399;
-  font-size: 12px;
+  color: #64748b;
+  font-size: 13px;
 }
 
 .comment-content {
-  color: #606266;
-  line-height: 1.5;
-  margin-bottom: 10px;
+  color: #4b5563;
+  line-height: 1.7;
+  font-size: 15px;
 }
 
-.comment-actions {
-  display: flex;
-  gap: 10px;
+/* 响应式设计 */
+@media (max-width: 1024px) {
+  .left-sidebar {
+    width: 250px;
+  }
+
+  .content-container {
+    padding: 24px;
+  }
+
+  .article-title {
+    font-size: 28px;
+  }
 }
 
 @media (max-width: 768px) {
   .document-view {
-    padding: 15px;
+    flex-direction: column;
   }
 
-  .document-meta {
+  .left-sidebar {
+    width: 100%;
+    padding: 20px;
+  }
+
+  .top-header {
+    padding: 12px 16px;
+  }
+
+  .content-container {
+    padding: 16px;
+  }
+
+  .article-header {
+    padding: 24px;
+  }
+
+  .article-title {
+    font-size: 24px;
+  }
+
+  .author-card {
+    padding: 20px;
+  }
+
+  .document-content {
+    padding: 24px;
+  }
+
+  .interaction-buttons {
+    gap: 16px;
+  }
+
+  .interaction-btn {
+    min-width: 50px;
+    height: 40px;
+  }
+
+  .comments-section {
+    padding: 24px;
+  }
+
+  .comment-item {
+    padding: 16px;
+  }
+
+  .author-stats-section {
     flex-direction: column;
     align-items: flex-start;
-    gap: 8px;
+    gap: 16px;
   }
 
-  .document-stats {
-    flex-direction: column;
-    gap: 10px;
+  .stats-list {
+    gap: 16px;
   }
 
-  .action-buttons {
-    flex-direction: column;
+  .stat-item {
+    font-size: 13px;
   }
 }
 </style>

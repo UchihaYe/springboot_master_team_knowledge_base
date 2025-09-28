@@ -1,7 +1,13 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npm run dev:*)"
+      "Bash(npm run dev:*)",
+      "Bash(npx vue-tsc:*)",
+      "Bash(npm run type-check:*)",
+      "Bash(mkdir:*)",
+      "WebFetch(domain:element-plus.org)",
+      "Bash(mvn:*)",
+      "Bash(chmod:*)"
     ],
     "deny": [],
     "ask": []
